@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chilonzor tumani — Taqdimot</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #1a1a2e;
+    overflow: hidden;
+    height: 100vh;
+    color: #fff;
+  }
+
+  .slide {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0; left: 0;
+    padding: 60px;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    overflow: hidden;
+  }
+
+  .slide.active { display: flex; }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle at 30% 40%, rgba(0, 119, 182, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 70% 60%, rgba(0, 180, 216, 0.06) 0%, transparent 50%);
+    animation: bgShift 20s ease-in-out infinite;
+  }
+
+  @keyframes bgShift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-30px, -20px); }
+  }
+
+  h1 {
+    font-size: 4rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #00b4d8, #0077b6, #48cae4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #00b4d8;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .subtitle {
+    font-size: 1.3rem;
+    color: #90e0ef;
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .content-slide {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0; left: 0;
+    padding: 50px 80px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    overflow-y: auto;
+  }
+
+  .content-slide.active { display: block; }
+
+  .content-slide h2 {
+    font-size: 2.2rem;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(0, 180, 216, 0.3);
+  }
+
+  .card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 25px;
+    transition: transform 0.3s, box-shadow 0.3s;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  }
+
+  .card h3 {
+    color: #48cae4;
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+  }
+
+  .card p, .card li {
+    color: #ccc;
+    line-height: 1.6;
+    font-size: 0.95rem;
+  }
+
+  .card ul { list-style: none; padding: 0; }
+  .card ul li::before { content: '▸ '; color: #00b4d8; }
+
+  .stat {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fca311;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .nav {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    z-index: 1000;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(12px);
+    padding: 12px 24px;
+    border-radius: 50px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .nav button {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 10px 22px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+    font-weight: 600;
+  }
+
+  .nav button:hover { background: #00b4d8; border-color: #00b4d8; }
+  .nav .page-indicator {
+    color: #90e0ef;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  #map {
+    width: 100%;
+    height: calc(100vh - 180px);
+    border-radius: 16px;
+    border: 2px solid rgba(0, 180, 216, 0.3);
+    position: relative;
+    z-index: 1;
+  }
+
+  .map-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .map-container h2 { margin-bottom: 15px; }
+
+  .map-hint {
+    text-align: center;
+    color: #90e0ef;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  .legend {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #ccc;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .slide-number {
+    position: fixed;
+    top: 20px;
+    right: 30px;
+    color: rgba(255,255,255,0.3);
+    font-size: 1rem;
+    z-index: 1000;
+    font-weight: 600;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin: 30px 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .stat-box {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .stat-box .num { font-size: 2.5rem; font-weight: 800; color: #fca311; }
+  .stat-box .label { font-size: 0.85rem; color: #90e0ef; margin-top: 5px; }
+
+  @media (max-width: 768px) {
+    .slide { padding: 30px; }
+    .content-slide { padding: 30px; }
+    h1 { font-size: 2.2rem; }
+    h2 { font-size: 1.5rem; }
+    .card-container { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="slide active" id="slide-0">
+  <h1>CHILONZOR TUMANI</h1>
+  <p class="subtitle">"Beshqo'rg'on" mahallasi — Xavfsizlik va tartibni ta'minlash</p>
+  <p class="subtitle" style="font-size:1rem; margin-top:40px; color:rgba(255,255,255,0.4);">Toshkent shahar, 2025-2026</p>
+</div>
+
+<div class="content-slide" id="slide-1">
+  <h2>Chilonzor tumani haqida</h2>
+  <div class="card-container">
+    <div class="card">
+      <h3>Hudud</h3>
+      <p>Chilonzor — Toshkent shahrining janubi-g'arbiy qismida joylashgan tuman. 1963-yilda tashkil etilgan. Maydoni 3,2 ming gektar.</p>
+    </div>
+    <div class="card">
+      <h3>Aholi</h3>
+      <p><span class="stat">~268 000</span>nafardan ortiq aholi istiqomat qiladi. Bu Toshkentning eng gavjum tumanlaridan biri.</p>
+    </div>
+    <div class="card">
+      <h3>Infratuzilma</h3>
+      <p>Yirik bozorlar (Chinni, Bek Baraka), savdo markazlari, sanoat zonalari va transport yo'llari (M-39, Bunyodkor) bilan rivojlangan.</p>
+    </div>
+    <div class="card">
+      <h3>"Beshqo'rg'on" MFY</h3>
+      <p>Chilonzor tumanidagi eng yirik mahallalardan biri. Bozorlar va transport yo'llari kesishmasida joylashgan.</p>
+    </div>
+  </div>
+</div>
+
+<div class="content-slide" id="slide-2">
+  <h2>Interaktiv xarita</h2>
+  <div class="map-container">
+    <div id="map"></div>
+    <p class="map-hint">� Muammoli joylarga bosish orqali yaqinlashtiring</p>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:#e63946;"></span> Jinoyat statistikasi yuqori</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#fca311;"></span> Transport muammosi</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#8338ec;"></span> Ijaraviy uylar zonasi</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#00b4d8;"></span> Taksi muammosi</span>
+    </div>
+  </div>
+</div>
+
+<div class="content-slide" id="slide-3">
+  <h2>Asosiy muammolar</h2>
+  <div class="card-container">
+    <div class="card">
+      <h3>Bozorlardagi tartibsizlik</h3>
+      <p>"Bek Baraka", "Abu Sahiy" va Chinni bozorlari atrofida to'xtab turish uchun janjallar, tan jarohati yetkazish, o'g'irlik.</p>
+      <ul style="margin-top:10px;">
+        <li>2025-yilda 29 ta jinoyat qayd etilgan</li>
+        <li>55% tan jarohati, 45% o'g'irlik</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Yuk mashinalari muammosi</h3>
+      <p>Sanoat zonasida yuk mashinalari yo'l chetida 3-4 kun qarovsiz qoldiriladi, bu tirbandlik va o'g'irlikka olib keladi.</p>
+      <ul style="margin-top:10px;">
+        <li>17 ta o'g'irlik jinoyati</li>
+        <li>53% aynan shu zonada</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Ijara uylari</h3>
+      <p>68 ta "rezina" uy va hostel — ro'yxatga olinmagan, nazoratsiz, sanitar me'yorlarga rioya qilinmaydi.</p>
+      <ul style="margin-top:10px;">
+        <li>325 ta murojaat</li>
+        <li>68 ta ma'muriy qoidabuzarlik</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Taksi nizolari</h3>
+      <p>M-39 va Bunyodkor ko'chasi kesishmasida turli mintaqa haydovchilari o'rtasida nizolar, tan jarohati yetkazish.</p>
+      <ul style="margin-top:10px;">
+        <li>126 ta murojaat</li>
+        <li>2 ta tan jarohati yetkazish</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="content-slide" id="slide-4">
+  <h2>Statistika</h2>
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="num">29</div>
+      <div class="label">Jinoyat (2025)</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">45%</div>
+      <div class="label">O'g'irlik ulushi</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">55%</div>
+      <div class="label">Tan jarohati</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">325</div>
+      <div class="label">Murojaatlar</div>
+    </div>
+  </div>
+  <div class="card-container" style="margin-top:20px;">
+    <div class="card" style="border-left: 4px solid #e63946;">
+      <h3>Asosiy sabablar</h3>
+      <ul>
+        <li>Avtoturargoh yo'qligi — 45% jinoyatlar sababi</li>
+        <li>Nazoratsiz ijaraviy uylar</li>
+        <li>Transport vositalarining qarovsiz qoldirilishi</li>
+        <li>Tartibga solinmagan taksi faoliyati</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left: 4px solid #00b4d8;">
+      <h3>Eng muammoli hududlar</h3>
+      <ul>
+        <li>Bek Baraka / Chinni bozorlari atrofi</li>
+        <li>M-39 — Bunyodkor kesishmasi</li>
+        <li>Sanoat zonasi (bojxona omborlari)</li>
+        <li>Ijara uylari joylashgan mahallalar</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="content-slide" id="slide-5">
+  <h2>Takliflar</h2>
+  <div class="card-container">
+    <div class="card">
+      <h3>Bozorlar atrofi</h3>
+      <ul>
+        <li>12 ta to'xtash taqiqlangan belgisi o'rnatish</li>
+        <li>2 ta avtofoto/video tizimi</li>
+        <li>2 ta maxsus patrul + evakuator</li>
+        <li>Bozor hisobidan 2 ta profilaktika inspektori</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Sanoat zonasi</h3>
+      <ul>
+        <li>Korxonalar hisobidan yuk mashinalari turargohi</li>
+        <li>20 ta to'xtash taqiqlangan belgisi</li>
+        <li>2 ta avtomatik foto/video qurilma</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Ijara uylari</h3>
+      <ul>
+        <li>Barcha ijaraviy uylarni ro'yxatga olish</li>
+        <li>40 ta "Face ID" kamera o'rnatish</li>
+        <li>50 ta elektron axborot tizimi</li>
+        <li>"E-Mehmon" tizimiga ulash</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Taksi muammosi</h3>
+      <ul>
+        <li>Ko'p qavatli taksi turargohi qurish</li>
+        <li>Sektorni raqamlashtirish</li>
+        <li>Yo'lovchi harakatini kuzatish tizimi</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="content-slide" id="slide-6">
+  <h2>Kutilayotgan natijalar</h2>
+  <div class="card-container" style="grid-template-columns: repeat(2, 1fr);">
+    <div class="card">
+      <h3>Jinoyatchilikni kamaytirish</h3>
+      <p>Nazorat va profilaktika choralari hisobiga 2026-yilda jinoyatlar sonini 50% ga kamaytirish.</p>
+    </div>
+    <div class="card">
+      <h3>Transport tartibi</h3>
+      <p>Avtoturargohlar va belgilar orqali tirbandlik va o'g'irliklarning oldini olish.</p>
+    </div>
+    <div class="card">
+      <h3>Raqamlashtirish</h3>
+      <p>Face ID, E-Mehmon, avtomatik videoqayd etish tizimlari orqali to'liq nazorat.</p>
+    </div>
+    <div class="card">
+      <h3>Huquqiy tartib</h3>
+      <p>Ijara bozori va taksofon faoliyatini qonuniy asosga o'tkazish, "soya" iqtisodiyotni qisqartirish.</p>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  <button onclick="prevSlide()">◀</button>
+  <span class="page-indicator" id="pageIndicator">1 / 7</span>
+  <button onclick="nextSlide()">▶</button>
+</div>
+
+<div class="slide-number" id="slideNumber">1 / 7</div>
+
+<script>
+const slides = [
+  document.getElementById('slide-0'),
+  document.getElementById('slide-1'),
+  document.getElementById('slide-2'),
+  document.getElementById('slide-3'),
+  document.getElementById('slide-4'),
+  document.getElementById('slide-5'),
+  document.getElementById('slide-6')
+];
+
+let current = 0;
+let mapInitialized = false;
+let map = null;
+
+function showSlide(idx) {
+  slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+  document.getElementById('pageIndicator').textContent = `${idx + 1} / ${slides.length}`;
+  document.getElementById('slideNumber').textContent = `${idx + 1} / ${slides.length}`;
+  current = idx;
+
+  if (idx === 2 && !mapInitialized) {
+    setTimeout(initMap, 200);
+    mapInitialized = true;
+  }
+  if (idx === 2 && map) {
+    setTimeout(() => map.invalidateSize(), 100);
+  }
+}
+
+function nextSlide() { if (current < slides.length - 1) showSlide(current + 1); }
+function prevSlide() { if (current > 0) showSlide(current - 1); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevSlide(); }
+});
+
+function initMap() {
+  map = L.map('map', {
+    center: [41.280, 69.215],
+    zoom: 14,
+    zoomControl: true,
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19,
+  }).addTo(map);
+
+  const locations = [
+    {
+      coords: [41.272, 69.218],
+      label: '"Bek Baraka" bozori',
+      desc: '29 ta jinoyat (2025). Janjal, o\'g\'irlik.',
+      color: '#e63946',
+      type: 'crime'
+    },
+    {
+      coords: [41.278, 69.222],
+      label: 'Chinni bozori',
+      desc: 'Tirbandlik, janjallar, to\'xtash joyi muammosi.',
+      color: '#e63946',
+      type: 'crime'
+    },
+    {
+      coords: [41.275, 69.225],
+      label: '"Abu Sahiy" bozori',
+      desc: 'Avtoturargoh uchun nizolar, tan jarohati.',
+      color: '#e63946',
+      type: 'crime'
+    },
+    {
+      coords: [41.284, 69.205],
+      label: 'M-39 / Bunyodkor kesishmasi',
+      desc: 'Taksi nizolari, 126 ta murojaat.',
+      color: '#00b4d8',
+      type: 'taxi'
+    },
+    {
+      coords: [41.276, 69.208],
+      label: 'Sanoat zonasi',
+      desc: 'Yuk mashinalari qarovsiz, 17 ta o\'g\'irlik.',
+      color: '#fca311',
+      type: 'transport'
+    },
+    {
+      coords: [41.286, 69.215],
+      label: 'Ijara uylar zonasi',
+      desc: '68 ta "rezina" uy, 325 ta murojaat.',
+      color: '#8338ec',
+      type: 'rental'
+    },
+    {
+      coords: [41.270, 69.212],
+      label: '"Beshqo\'rg\'on" MFY',
+      desc: 'Chilonzor tumani, asosiy muammoli hudud.',
+      color: '#00b4d8',
+      type: 'info'
+    },
+    {
+      coords: [41.290, 69.230],
+      label: 'TPAI hududi',
+      desc: 'Taksi nizolari, transport muammosi.',
+      color: '#fca311',
+      type: 'transport'
+    }
+  ];
+
+  locations.forEach(loc => {
+    const marker = L.circleMarker(loc.coords, {
+      radius: 12,
+      fillColor: loc.color,
+      color: '#fff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.8,
+    }).addTo(map);
+
+    const popupContent = `
+      <div style="font-family:sans-serif;min-width:180px;">
+        <strong style="color:${loc.color};font-size:1.1rem;">${loc.label}</strong>
+        <p style="margin:5px 0 0;color:#555;font-size:0.9rem;">${loc.desc}</p>
+      </div>
+    `;
+
+    marker.bindPopup(popupContent);
+    marker.bindTooltip(loc.label, { direction: 'top', offset: [0, -10] });
+
+    marker.on('click', function() {
+      map.flyTo(loc.coords, 17, { duration: 1.2 });
+      setTimeout(() => marker.openPopup(), 1200);
+    });
+  });
+
+  const group = L.featureGroup(locations.map(l => L.circleMarker(l.coords, { radius: 1 })));
+  const bounds = group.getBounds();
+  if (bounds.isValid()) {
+    map.fitBounds(bounds.pad(0.15));
+  }
+}
+
+showSlide(0);
+</script>
+
+</body>
+</html>
