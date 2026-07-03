@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chilonzor tumani — Taqdimot</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -271,13 +271,27 @@
 </head>
 <body>
 
-<div class="slide active" id="slide-0">
+<div class="content-slide" id="slide-0">
+  <h2>Interaktiv xarita</h2>
+  <div class="map-container">
+    <div id="map"></div>
+    <p class="map-hint">Use right-click drag or controls to rotate; zoom in for 3D villas.</p>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:#e63946;"></span> Jinoyat statistikasi yuqori</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#fca311;"></span> Transport muammosi</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#8338ec;"></span> Ijaraviy uylar zonasi</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#00b4d8;"></span> Taksi muammosi</span>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="slide-1">
   <h1>CHILONZOR TUMANI</h1>
   <p class="subtitle">"Beshqo'rg'on" mahallasi — Xavfsizlik va tartibni ta'minlash</p>
   <p class="subtitle" style="font-size:1rem; margin-top:40px; color:rgba(255,255,255,0.4);">Toshkent shahar, 2025-2026</p>
 </div>
 
-<div class="content-slide" id="slide-1">
+<div class="content-slide" id="slide-2">
   <h2>Chilonzor tumani haqida</h2>
   <div class="card-container">
     <div class="card">
@@ -295,20 +309,6 @@
     <div class="card">
       <h3>"Beshqo'rg'on" MFY</h3>
       <p>Chilonzor tumanidagi eng yirik mahallalardan biri. Bozorlar va transport yo'llari kesishmasida joylashgan.</p>
-    </div>
-  </div>
-</div>
-
-<div class="content-slide" id="slide-2">
-  <h2>Interaktiv xarita</h2>
-  <div class="map-container">
-    <div id="map"></div>
-    <p class="map-hint">� Muammoli joylarga bosish orqali yaqinlashtiring</p>
-    <div class="legend">
-      <span class="legend-item"><span class="legend-dot" style="background:#e63946;"></span> Jinoyat statistikasi yuqori</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#fca311;"></span> Transport muammosi</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#8338ec;"></span> Ijaraviy uylar zonasi</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#00b4d8;"></span> Taksi muammosi</span>
     </div>
   </div>
 </div>
@@ -484,11 +484,11 @@ function showSlide(idx) {
   document.getElementById('slideNumber').textContent = `${idx + 1} / ${slides.length}`;
   current = idx;
 
-  if (idx === 2 && !mapInitialized) {
+  if (idx === 0 && !mapInitialized) {
     setTimeout(initMap, 200);
     mapInitialized = true;
   }
-  if (idx === 2 && map) {
+  if (idx === 0 && map) {
     setTimeout(() => map.invalidateSize(), 100);
   }
 }
@@ -502,107 +502,295 @@ document.addEventListener('keydown', e => {
 });
 
 function initMap() {
-  map = L.map('map', {
-    center: [41.280, 69.215],
-    zoom: 14,
-    zoomControl: true,
+  const center = [69.2797, 41.3111];
+  const tashkentBounds = [[69.05, 41.20], [69.50, 41.38]];
+
+  if (!maplibregl.supported()) {
+    document.getElementById('map').innerHTML = '<div style="color:white;font-size:16px;padding:20px;">WebGL not supported. Open this file in a browser with WebGL enabled.</div>';
+    return;
+  }
+
+  const mapStyle = {
+    version: 8,
+    sources: {
+      osm: {
+        type: 'raster',
+        tiles: [
+          'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        ],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors'
+      }
+    },
+    layers: [
+      {
+        id: 'osm-raster',
+        type: 'raster',
+        source: 'osm',
+        minzoom: 0,
+        maxzoom: 19
+      }
+    ]
+  };
+
+  map = new maplibregl.Map({
+    container: 'map',
+    style: mapStyle,
+    center,
+    zoom: 13.5,
+    pitch: 55,
+    bearing: 20,
+    maxZoom: 18,
+    minZoom: 11,
+    maxBounds: [[69.0, 41.15], [69.45, 41.35]],
+    dragRotate: true,
+    pitchWithRotate: true,
+    renderWorldCopies: false,
+    antialias: true,
   });
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19,
-  }).addTo(map);
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'top-right');
+  if (map.touchZoomRotate) {
+    map.touchZoomRotate.enableRotation();
+    if (map.touchZoomRotate.enablePitch) map.touchZoomRotate.enablePitch();
+  }
 
-  const locations = [
-    {
-      coords: [41.272, 69.218],
-      label: '"Bek Baraka" bozori',
-      desc: '29 ta jinoyat (2025). Janjal, o\'g\'irlik.',
-      color: '#e63946',
-      type: 'crime'
-    },
-    {
-      coords: [41.278, 69.222],
-      label: 'Chinni bozori',
-      desc: 'Tirbandlik, janjallar, to\'xtash joyi muammosi.',
-      color: '#e63946',
-      type: 'crime'
-    },
-    {
-      coords: [41.275, 69.225],
-      label: '"Abu Sahiy" bozori',
-      desc: 'Avtoturargoh uchun nizolar, tan jarohati.',
-      color: '#e63946',
-      type: 'crime'
-    },
-    {
-      coords: [41.284, 69.205],
-      label: 'M-39 / Bunyodkor kesishmasi',
-      desc: 'Taksi nizolari, 126 ta murojaat.',
-      color: '#00b4d8',
-      type: 'taxi'
-    },
-    {
-      coords: [41.276, 69.208],
-      label: 'Sanoat zonasi',
-      desc: 'Yuk mashinalari qarovsiz, 17 ta o\'g\'irlik.',
-      color: '#fca311',
-      type: 'transport'
-    },
-    {
-      coords: [41.286, 69.215],
-      label: 'Ijara uylar zonasi',
-      desc: '68 ta "rezina" uy, 325 ta murojaat.',
-      color: '#8338ec',
-      type: 'rental'
-    },
-    {
-      coords: [41.270, 69.212],
-      label: '"Beshqo\'rg\'on" MFY',
-      desc: 'Chilonzor tumani, asosiy muammoli hudud.',
-      color: '#00b4d8',
-      type: 'info'
-    },
-    {
-      coords: [41.290, 69.230],
-      label: 'TPAI hududi',
-      desc: 'Taksi nizolari, transport muammosi.',
-      color: '#fca311',
-      type: 'transport'
+  const buildings = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [69.2756, 41.3148],
+            [69.2768, 41.3148],
+            [69.2768, 41.3160],
+            [69.2756, 41.3160],
+            [69.2756, 41.3148]
+          ]]
+        },
+        properties: { baseHeight: 30, height_m: 30, phase: 0.2, label: 'Building A' }
+      },
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [69.2685, 41.3112],
+            [69.2696, 41.3112],
+            [69.2696, 41.3125],
+            [69.2685, 41.3125],
+            [69.2685, 41.3112]
+          ]]
+        },
+        properties: { baseHeight: 20, height_m: 20, phase: 1.1, label: 'Building B' }
+      },
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [69.2800, 41.3098],
+            [69.2812, 41.3098],
+            [69.2812, 41.3112],
+            [69.2800, 41.3112],
+            [69.2800, 41.3098]
+          ]]
+        },
+        properties: { baseHeight: 26, height_m: 26, phase: 2.4, label: 'Building C' }
+      },
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [69.2730, 41.3078],
+            [69.2745, 41.3078],
+            [69.2745, 41.3094],
+            [69.2730, 41.3094],
+            [69.2730, 41.3078]
+          ]]
+        },
+        properties: { baseHeight: 22, height_m: 22, phase: 0.8, label: 'Building D' }
+      },
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [69.2718, 41.3122],
+            [69.2732, 41.3122],
+            [69.2732, 41.3136],
+            [69.2718, 41.3136],
+            [69.2718, 41.3122]
+          ]]
+        },
+        properties: { baseHeight: 18, height_m: 18, phase: 1.9, label: 'Building E' }
+      },
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [69.2798, 41.3085],
+            [69.2811, 41.3085],
+            [69.2811, 41.3098],
+            [69.2798, 41.3098],
+            [69.2798, 41.3085]
+          ]]
+        },
+        properties: { baseHeight: 24, height_m: 24, phase: 2.7, label: 'Building F' }
+      }
+    ]
+  };
+
+  const markers = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [69.2725, 41.3105] },
+        properties: { category: 'crime', title: 'Jinoyat statistikasi yuqori' }
+      },
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [69.2790, 41.3135] },
+        properties: { category: 'transport', title: 'Transport muammosi' }
+      },
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [69.2812, 41.3104] },
+        properties: { category: 'rental', title: 'Ijaraviy uylar zonasi' }
+      },
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [69.2748, 41.3093] },
+        properties: { category: 'taxi', title: 'Taksi muammosi' }
+      }
+    ]
+  };
+
+  map.on('load', () => {
+    document.querySelector('.map-hint').textContent = 'Map loaded. Use right-click drag or controls to rotate.';
+
+    map.addSource('buildings', { type: 'geojson', data: buildings });
+
+    map.addLayer({
+      id: 'buildings-extrusion',
+      type: 'fill-extrusion',
+      source: 'buildings',
+      paint: {
+        'fill-extrusion-color': [
+          'interpolate',
+          ['linear'],
+          ['get', 'height_m'],
+          18, '#f8d0a9',
+          24, '#f4a261',
+          30, '#e76f51',
+          36, '#d62828'
+        ],
+        'fill-extrusion-height': ['get', 'height_m'],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': 0.95,
+        'fill-extrusion-vertical-gradient': true
+      }
+    });
+
+    map.addLayer({
+      id: 'building-outline',
+      type: 'line',
+      source: 'buildings',
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 1.2,
+        'line-opacity': 0.7
+      }
+    });
+
+    map.addSource('markers', { type: 'geojson', data: markers });
+
+    map.addLayer({
+      id: 'marker-circles',
+      type: 'circle',
+      source: 'markers',
+      paint: {
+        'circle-radius': 8,
+        'circle-color': [
+          'match',
+          ['get', 'category'],
+          'crime', '#e63946',
+          'transport', '#fca311',
+          'rental', '#8338ec',
+          'taxi', '#00b4d8',
+          '#ffffff'
+        ],
+        'circle-stroke-color': '#000',
+        'circle-stroke-width': 2,
+        'circle-opacity': 0.9
+      }
+    });
+
+    map.addLayer({
+      id: 'marker-labels',
+      type: 'symbol',
+      source: 'markers',
+      layout: {
+        'text-field': ['get', 'title'],
+        'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+        'text-size': 12,
+        'text-offset': [0, 1.4],
+        'text-anchor': 'top'
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': '#0b3d91',
+        'text-halo-width': 2
+      }
+    });
+
+    map.flyTo({
+      center,
+      zoom: 14.2,
+      pitch: 55,
+      bearing: 35,
+      speed: 0.45,
+      curve: 1.4,
+      essential: true
+    });
+
+    const animationStart = Date.now();
+    function animateBuildings() {
+      const t = (Date.now() - animationStart) / 800;
+      buildings.features.forEach(feature => {
+        const base = feature.properties.baseHeight;
+        const phase = feature.properties.phase || 0;
+        feature.properties.height_m = Math.max(14, base + 6 * Math.sin(t + phase));
+      });
+      map.getSource('buildings').setData(buildings);
+      requestAnimationFrame(animateBuildings);
     }
-  ];
+    animateBuildings();
 
-  locations.forEach(loc => {
-    const marker = L.circleMarker(loc.coords, {
-      radius: 12,
-      fillColor: loc.color,
-      color: '#fff',
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8,
-    }).addTo(map);
-
-    const popupContent = `
-      <div style="font-family:sans-serif;min-width:180px;">
-        <strong style="color:${loc.color};font-size:1.1rem;">${loc.label}</strong>
-        <p style="margin:5px 0 0;color:#555;font-size:0.9rem;">${loc.desc}</p>
-      </div>
-    `;
-
-    marker.bindPopup(popupContent);
-    marker.bindTooltip(loc.label, { direction: 'top', offset: [0, -10] });
-
-    marker.on('click', function() {
-      map.flyTo(loc.coords, 17, { duration: 1.2 });
-      setTimeout(() => marker.openPopup(), 1200);
+    map.on('mouseenter', 'buildings-extrusion', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseleave', 'buildings-extrusion', (event) => {
+      map.getCanvas().style.cursor = '';
+    });
+    map.on('click', 'buildings-extrusion', (event) => {
+      const properties = event.features[0].properties || {};
+      new maplibregl.Popup()
+        .setLngLat(event.lngLat)
+        .setHTML(`<strong>${properties.name || 'Building'}</strong><br>Height ${properties.height_m} m`)
+        .addTo(map);
     });
   });
 
-  const group = L.featureGroup(locations.map(l => L.circleMarker(l.coords, { radius: 1 })));
-  const bounds = group.getBounds();
-  if (bounds.isValid()) {
-    map.fitBounds(bounds.pad(0.15));
-  }
+  map.on('error', (e) => {
+    console.error('Map error', e.error);
+    document.querySelector('.map-hint').textContent = 'Map error: ' + (e.error && e.error.message ? e.error.message : 'unknown');
+  });
 }
 
 showSlide(0);
